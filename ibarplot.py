@@ -1,5 +1,12 @@
 class InteractiveBarPlot:
     
+    COLORBAR_QUALITY = 1000
+    RATIO = 0.03
+    COLORBAR_HEIGHT = int(COLORBAR_QUALITY*RATIO)
+    COLORBAR_TICKS = 5
+    RANGE_FACTOR = 0.7
+    LABELS = ['Bottom edge', 'Bottom half', 'Mean value','Top half', 'Top edge']
+    
     def __init__(self, title='Init title', colormap='Spectral', colorslice=[0.09, 0.89], 
                  yrange=[0, 10], xrange=[0, 10], figsize=(9,8)):
         
@@ -7,10 +14,11 @@ class InteractiveBarPlot:
         gs = fig.add_gridspec(2, 1, height_ratios=[5, 1])
         
         ax = fig.add_subplot(gs[0])
-        ax1 = fig.add_subplot(gs[1])
+        colorbar = fig.add_subplot(gs[1])
         
         self.figure = fig
         self.ax = ax
+        self.colorbar = colorbar
         
         self.xrange = xrange
         self.yrange = yrange
@@ -22,19 +30,27 @@ class InteractiveBarPlot:
         self.ax.spines['right'].set_visible(False)
         self.ax.xaxis.set_visible(False)
         
-        self.__FACTOR = 0.7
-        
         self.colormap = cm.get_cmap(name=colormap)
         
         self.mincolor = colorslice[0]
         self.maxcolor = colorslice[1]
         self.coloredges = (self.colormap(self.mincolor), self.colormap(self.mincolor), self.colormap(self.maxcolor))
         
-        cmap = np.outer(np.ones(30), np.arange(0, 1, 0.001))
-        ax1.imshow(cmap, cmap=self.colormap)
-        ax1.set_xlim([1000*self.mincolor, 1000*self.maxcolor])
-        ax1.xaxis.set_visible(False)
-        ax1.yaxis.set_visible(False)
+        cmap = np.outer(np.ones(InteractiveBarPlot.COLORBAR_HEIGHT), np.arange(0, 1, InteractiveBarPlot.COLORBAR_QUALITY**(-1)))
+        
+        self.colorbar.imshow(cmap, cmap=self.colormap)
+        
+        xticks = np.arange(InteractiveBarPlot.COLORBAR_QUALITY*self.mincolor, 
+                           (InteractiveBarPlot.COLORBAR_QUALITY + 2)*self.maxcolor, 
+                           InteractiveBarPlot.COLORBAR_QUALITY*(self.maxcolor - self.mincolor)/
+                           (InteractiveBarPlot.COLORBAR_TICKS - 1))
+        
+        self.colorbar.set_xticks(xticks)
+        self.colorbar.set_xticklabels(InteractiveBarPlot.LABELS)
+        self.colorbar.set_xlim([InteractiveBarPlot.COLORBAR_QUALITY*self.mincolor, 
+                                InteractiveBarPlot.COLORBAR_QUALITY*self.maxcolor])
+        
+        self.colorbar.yaxis.set_visible(False)
         
         self.values = []
         self.colors = []
@@ -44,6 +60,7 @@ class InteractiveBarPlot:
         self.widths_scale = []
         self.positions = []
         self.indexes = []
+        self.sublines = [0, 0]
         
         self.__delta = 0
         self.mean = 0
@@ -127,9 +144,6 @@ class InteractiveBarPlot:
     
     def __add_bar_label(self, index):
         
-#         bar = self.bar_graph_bars[index]
-#         height = bar.get_height()
-
         text = self.graph_labels[index]
         ratio = 1 if len(text) == 1 else 1/np.log(len(text))
         fontsize = self.widths[index]*self.fontsize*ratio + 0.4
@@ -180,6 +194,13 @@ class InteractiveBarPlot:
             
             self.line_mean, = self.ax.plot([0, self.xrange[1]*0.9], [self.mean, self.mean], 
                                           color='skyblue', linewidth=1.5, alpha=0.6, linestyle='dotted')
+            
+            self.sublines[0], =self.ax.plot([0, self.xrange[1]*0.9], [(self.mean + self.top_lim)/2, (self.mean + self.top_lim)/2], 
+                                          color='skyblue', linewidth=1.5, alpha=0.5, linestyle='dotted')
+            
+            self.sublines[1], =self.ax.plot([0, self.xrange[1]*0.9], [(self.mean + self.bot_lim)/2, (self.mean + self.bot_lim)/2], 
+                                          color='skyblue', linewidth=1.5, alpha=0.5, linestyle='dotted')
+            
         
         if draw_tline:
             
@@ -207,7 +228,7 @@ class InteractiveBarPlot:
     
     def __on_drag_start(self, event):
         
-        shift = self.__FACTOR * abs(self.top_lim - self.bot_lim)
+        shift = InteractiveBarPlot.RANGE_FACTOR * abs(self.top_lim - self.bot_lim)
         
         if self.top_lim - self.__delta < event.ydata < self.top_lim + self.__delta:
             self.top_clicked = True
@@ -230,9 +251,10 @@ class InteractiveBarPlot:
             self.line_mean.remove()
             self.fill_between.remove()
             self.scat_top.remove()
-            self.bar_graph.errorbar.remove()
+            if not self.err is None: self.bar_graph.errorbar.remove()
             _ = [p.remove() for p in self.bar_graph.patches]
             _ = [l.remove() for l in self.line_labels]
+            _ = [sl.remove() for sl in self.sublines]
             
             if self.labels_data: _ = [l.remove() for l in self.labels_data]
             
@@ -246,9 +268,10 @@ class InteractiveBarPlot:
             self.line_mean.remove()
             self.fill_between.remove()
             self.scat_bot.remove()
-            self.bar_graph.errorbar.remove()
+            if not self.err is None: self.bar_graph.errorbar.remove()
             _ = [p.remove() for p in self.bar_graph.patches]
             _ = [l.remove() for l in self.line_labels]
+            _ = [sl.remove() for sl in self.sublines]
             
             if self.labels_data: _ = [l.remove() for l in self.labels_data]
                 
@@ -264,9 +287,10 @@ class InteractiveBarPlot:
             self.fill_between.remove()
             self.scat_bot.remove()
             self.scat_top.remove()
-            self.bar_graph.errorbar.remove()
+            if not self.err is None: self.bar_graph.errorbar.remove()
             _ = [p.remove() for p in self.bar_graph.patches]
             _ = [l.remove() for l in self.line_labels]
+            _ = [sl.remove() for sl in self.sublines]
             
             if self.labels_data: _ = [l.remove() for l in self.labels_data]
                 
@@ -331,9 +355,10 @@ class InteractiveBarPlot:
         self.fill_between.remove()
         self.scat_bot.remove()
         self.scat_top.remove()
-        self.bar_graph.errorbar.remove()
+        if not self.err is None: self.bar_graph.errorbar.remove()
         _ = [p.remove() for p in self.bar_graph.patches]
         _ = [l.remove() for l in self.line_labels]
+        _ = [sl.remove() for sl in self.sublines]
 
         if self.labels_data: _ = [l.remove() for l in self.labels_data]
         
@@ -347,13 +372,12 @@ class InteractiveBarPlot:
         self.bot_lim = bot_lim
         self.mean = np.mean([top_lim, bot_lim])
         
-    def add_data(self, values=[], err=[], autoscaley=True, autoscalex=True, labels=None, errlinesize=14, fontsize=14):
+    def add_data(self, values=[], err=None, autoscaley=True, autoscalex=True, labels=None, errlinesize=14, fontsize=14):
         
         self.values = np.array(values)
-        self.err = np.array(err)
-        self.__delta = np.max(self.values) * 0.02
         
         size = self.values.size
+        self.err = None if err is None else np.array(err)
         
         self.colors = [0 for i in range(size)]
         self.edgecolors = [0 for i in range(size)]
@@ -380,6 +404,7 @@ class InteractiveBarPlot:
         
         self.bot_lim = self.yrange[0]*1.1
         self.top_lim = self.yrange[1]*0.9
+        self.__delta = self.yrange[1] * 0.01
 
         if not labels is None and np.array(labels).size == size:
             
@@ -390,3 +415,4 @@ class InteractiveBarPlot:
         
         self.__connect_events()
         self.__plot()
+        

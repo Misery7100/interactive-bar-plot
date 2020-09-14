@@ -3,7 +3,12 @@ class InteractiveBarPlot:
     def __init__(self, title='Init title', colormap='Spectral', colorslice=[0.09, 0.89], 
                  yrange=[0, 10], xrange=[0, 10], figsize=(9,8)):
         
-        fig, ax = plt.subplots(figsize=figsize)
+        fig = plt.figure(constrained_layout=True, figsize=figsize)
+        gs = fig.add_gridspec(2, 1, height_ratios=[5, 1])
+        
+        ax = fig.add_subplot(gs[0])
+        ax1 = fig.add_subplot(gs[1])
+        
         self.figure = fig
         self.ax = ax
         
@@ -20,9 +25,16 @@ class InteractiveBarPlot:
         self.__FACTOR = 0.7
         
         self.colormap = cm.get_cmap(name=colormap)
+        
         self.mincolor = colorslice[0]
         self.maxcolor = colorslice[1]
         self.coloredges = (self.colormap(self.mincolor), self.colormap(self.mincolor), self.colormap(self.maxcolor))
+        
+        cmap = np.outer(np.ones(30), np.arange(0, 1, 0.001))
+        ax1.imshow(cmap, cmap=self.colormap)
+        ax1.set_xlim([1000*self.mincolor, 1000*self.maxcolor])
+        ax1.xaxis.set_visible(False)
+        ax1.yaxis.set_visible(False)
         
         self.values = []
         self.colors = []
@@ -67,7 +79,7 @@ class InteractiveBarPlot:
         self.vect_update_width = np.vectorize(self.new_width, otypes=[list])
         self.vect_update_pos = np.vectorize(self.new_pos, otypes=[list])
         self.vect_add_labels = np.vectorize(self.__add_bar_label, otypes=[list])
-        
+          
     def __change_color(self, color, amount=0.5):
     
         try:
@@ -150,7 +162,7 @@ class InteractiveBarPlot:
             
             
         
-    def __plot(self, draw_tline=True, draw_bline=True):
+    def __plot(self, draw_tline=True, draw_bline=True, draw_mline=True):
         
         self.__update_colors()
         
@@ -164,7 +176,9 @@ class InteractiveBarPlot:
         self.fill_between = self.ax.fill_between([0, self.xrange[1]*0.9], [self.top_lim, self.top_lim], 
                                                  [self.bot_lim, self.bot_lim], color='skyblue', alpha=0.15)
         
-        self.line_mean, = self.ax.plot([0, self.xrange[1]*0.9], [self.mean, self.mean], 
+        if draw_mline:
+            
+            self.line_mean, = self.ax.plot([0, self.xrange[1]*0.9], [self.mean, self.mean], 
                                           color='skyblue', linewidth=1.5, alpha=0.6, linestyle='dotted')
         
         if draw_tline:
@@ -189,6 +203,7 @@ class InteractiveBarPlot:
         self.figure.canvas.mpl_connect('motion_notify_event', self.__drag_event)
         self.figure.canvas.mpl_connect('button_release_event', self.__on_drag_end)
         self.figure.canvas.mpl_connect('axes_leave_event', self.__on_drag_end)
+        self.figure.canvas.mpl_connect('scroll_event', self.__on_scroll)
     
     def __on_drag_start(self, event):
         
@@ -281,6 +296,50 @@ class InteractiveBarPlot:
         self.cent_clicked = False
         self.top_clicked = False
         self.bot_clicked = False
+    
+    def __on_scroll(self, event):
+    
+        shift = event.step*(self.yrange[1] - self.yrange[0])*0.01
+        
+        if self.top_lim + shift > self.yrange[1]:
+            self.top_lim = self.yrange[1]
+            
+        elif self.top_lim + shift < self.yrange[0]:
+            self.top_lim = self.yrange[0]
+            
+        else:
+            self.top_lim += shift
+            
+        if self.bot_lim - shift > self.yrange[1]:
+            self.bot_lim = self.yrange[1]
+            
+        elif self.bot_lim - shift < self.yrange[0]:
+            self.bot_lim = self.yrange[0]
+            
+        else:
+            self.bot_lim -= shift
+        
+        if abs(self.top_lim - self.bot_lim) < (self.yrange[1] - self.yrange[0])*0.08:
+            
+            sign = np.sign(self.top_lim - self.bot_lim)
+            self.top_lim = self.mean + sign*(self.yrange[1] - self.yrange[0])*0.04
+            self.bot_lim = self.mean - sign*(self.yrange[1] - self.yrange[0])*0.04
+        
+        self.line_bot.remove()
+        self.line_top.remove()
+        self.line_mean.remove()
+        self.fill_between.remove()
+        self.scat_bot.remove()
+        self.scat_top.remove()
+        self.bar_graph.errorbar.remove()
+        _ = [p.remove() for p in self.bar_graph.patches]
+        _ = [l.remove() for l in self.line_labels]
+
+        if self.labels_data: _ = [l.remove() for l in self.labels_data]
+        
+        self.__plot()
+        
+        
         
     def set_lims(self, top_lim=10, bot_lim=0):
         

@@ -8,5 +8,6 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mc
 import matplotlib.animation as animation
+from matplotlib.ticker import FormatStrFormatter
 
 # %matplotlib notebook # for Jupyter Notebook

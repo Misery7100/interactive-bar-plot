@@ -8,13 +8,12 @@ class InteractiveBarPlot:
     LABELS = ['Bottom edge', 'Bottom half', 'Mean value','Top half', 'Top edge']
     
     def __init__(self, title='Init title', colormap='Spectral', colorslice=[0.09, 0.89], 
-                 yrange=[0, 10], xrange=[0, 10], figsize=(9,8)):
+                 yrange=[0, 10], xrange=[0, 10], figsize=(9,8), yunits=None):
         
         fig = plt.figure(constrained_layout=True, figsize=figsize)
         gs = fig.add_gridspec(4, 1, height_ratios=[1, 5, 1, 1])
         
         ax = fig.add_subplot(gs[1])
-#         plt.subplots_adjust(bottom=0.25)
         colorbar = fig.add_subplot(gs[2])
         
         self.figure = fig
@@ -26,6 +25,7 @@ class InteractiveBarPlot:
         
         self.ax.set_xlim(xrange)
         self.ax.set_ylim(yrange)
+        if not yunits is None and isinstance(yunits, str): self.ax.set_ylabel(yunits, labelpad=10.2)
         
         title = self.ax.set_title(title)
         title.set_position([.5, 1.05])

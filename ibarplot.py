@@ -11,10 +11,11 @@ class InteractiveBarPlot:
                  yrange=[0, 10], xrange=[0, 10], figsize=(9,8)):
         
         fig = plt.figure(constrained_layout=True, figsize=figsize)
-        gs = fig.add_gridspec(2, 1, height_ratios=[5, 1])
+        gs = fig.add_gridspec(4, 1, height_ratios=[1, 5, 1, 1])
         
-        ax = fig.add_subplot(gs[0])
-        colorbar = fig.add_subplot(gs[1])
+        ax = fig.add_subplot(gs[1])
+#         plt.subplots_adjust(bottom=0.25)
+        colorbar = fig.add_subplot(gs[2])
         
         self.figure = fig
         self.ax = ax
@@ -25,7 +26,10 @@ class InteractiveBarPlot:
         
         self.ax.set_xlim(xrange)
         self.ax.set_ylim(yrange)
-        self.ax.set_title(title)
+        
+        title = self.ax.set_title(title)
+        title.set_position([.5, 1.05])
+        
         self.ax.spines['top'].set_visible(False)
         self.ax.spines['right'].set_visible(False)
         self.ax.xaxis.set_visible(False)
@@ -151,7 +155,7 @@ class InteractiveBarPlot:
         y_position = (min(self.values[index], self.yrange[1]) + self.yrange[0]) / 2.0
         
         self.labels_data[index] = self.ax.text(self.positions[index], y_position,
-                                              text, ha='center', va='bottom',
+                                              text, ha='center', va='center',
                                               color=self.__change_color(self.colors[index], 0.55),
                                               fontsize=fontsize)
     
